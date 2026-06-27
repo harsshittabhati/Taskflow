@@ -1,9 +1,10 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 
-dotenv.config();
 connectDB();
 
 const app = express();
@@ -14,7 +15,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Routes (we'll add these as we build them)
+// Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/boards', require('./routes/boards'));
 app.use('/api/tasks', require('./routes/tasks'));
