@@ -1,4 +1,8 @@
 const express = require('express');
 const router = express.Router();
-// routes coming soon
+const { suggestEstimate } = require('../controllers/aiController');
+const authMiddleware = require('../middleware/auth');
+
+router.post('/suggest', authMiddleware, suggestEstimate);
+
 module.exports = router;
