@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { getBoard } from '../api/boards';
-import { getTasks, createTask, updateTask, deleteTask } from '../api/tasks';
+import { getTasks, createTask, updateTask, deleteTask, suggestEstimate } from '../api/tasks';
 
 const COLUMNS = [
   { id: 'todo', label: 'To Do' },
@@ -27,10 +27,12 @@ const BoardView = () => {
   const [showModal, setShowModal] = useState(false);
   const [editTask, setEditTask] = useState(null);
   const [formData, setFormData] = useState({
-    title: '', description: '', priority: 'medium', dueDate: '', status: 'todo'
+    title: '', description: '', priority: 'medium', dueDate: '', status: 'todo', estimatedEffort: ''
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -53,18 +55,21 @@ const BoardView = () => {
 
   const openCreateModal = (status = 'todo') => {
     setEditTask(null);
-    setFormData({ title: '', description: '', priority: 'medium', dueDate: '', status });
+    setAiSuggestion(null);
+    setFormData({ title: '', description: '', priority: 'medium', dueDate: '', status, estimatedEffort: '' });
     setShowModal(true);
   };
 
   const openEditModal = (task) => {
     setEditTask(task);
+    setAiSuggestion(null);
     setFormData({
       title: task.title,
       description: task.description,
       priority: task.priority,
       dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
       status: task.status,
+      estimatedEffort: task.estimatedEffort || '',
     });
     setShowModal(true);
   };
@@ -107,6 +112,36 @@ const BoardView = () => {
     }
   };
 
+  const handleSuggestEstimate = async () => {
+    if (!formData.title) {
+      setError('Please enter a task title first');
+      return;
+    }
+    setAiLoading(true);
+    setAiSuggestion(null);
+    try {
+      const res = await suggestEstimate({
+        title: formData.title,
+        description: formData.description,
+      });
+      setAiSuggestion(res.data);
+    } catch (err) {
+      setError('AI suggestion failed');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleAcceptSuggestion = () => {
+    if (!aiSuggestion) return;
+    setFormData({
+      ...formData,
+      estimatedEffort: aiSuggestion.effort,
+      dueDate: aiSuggestion.suggestedDueDate,
+    });
+    setAiSuggestion(null);
+  };
+
   const isOverdue = (dueDate) => {
     if (!dueDate) return false;
     return new Date(dueDate) < new Date();
@@ -126,7 +161,6 @@ const BoardView = () => {
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => navigate('/dashboard')}
@@ -145,13 +179,11 @@ const BoardView = () => {
           </div>
         )}
 
-        {/* Columns */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {COLUMNS.map((col) => {
             const colTasks = tasks.filter((t) => t.status === col.id);
             return (
               <div key={col.id} className="bg-gray-100 dark:bg-gray-800 rounded-xl p-4">
-                {/* Column header */}
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-semibold text-gray-700 dark:text-gray-300">
                     {col.label}
@@ -167,7 +199,6 @@ const BoardView = () => {
                   </button>
                 </div>
 
-                {/* Task cards */}
                 <div className="space-y-3">
                   {colTasks.length === 0 && (
                     <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">
@@ -183,17 +214,12 @@ const BoardView = () => {
                           : 'border-gray-200 dark:border-gray-600'
                       }`}
                     >
-                      {/* Task title */}
                       <h3 className="font-medium text-gray-900 dark:text-white text-sm mb-2">
                         {task.title}
                       </h3>
-
-                      {/* Priority badge */}
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColor[task.priority]}`}>
                         {task.priority}
                       </span>
-
-                      {/* Due date */}
                       {task.dueDate && (
                         <p className={`text-xs mt-2 ${
                           isOverdue(task.dueDate) && task.status !== 'done'
@@ -204,30 +230,14 @@ const BoardView = () => {
                           {isOverdue(task.dueDate) && task.status !== 'done' && ' — Overdue'}
                         </p>
                       )}
-
-                      {/* Effort estimate */}
                       {task.estimatedEffort && (
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                           ⏱ {task.estimatedEffort}
                         </p>
                       )}
-
-                      {/* Actions */}
                       <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-600">
-                        <button
-                          onClick={() => openEditModal(task)}
-                          className="text-xs text-blue-500 hover:text-blue-700"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(task._id)}
-                          className="text-xs text-red-500 hover:text-red-700"
-                        >
-                          Delete
-                        </button>
-
-                        {/* Move buttons */}
+                        <button onClick={() => openEditModal(task)} className="text-xs text-blue-500 hover:text-blue-700">Edit</button>
+                        <button onClick={() => handleDelete(task._id)} className="text-xs text-red-500 hover:text-red-700">Delete</button>
                         {task.status !== 'todo' && (
                           <button
                             onClick={() => handleMoveTask(task, task.status === 'done' ? 'in-progress' : 'todo')}
@@ -257,7 +267,7 @@ const BoardView = () => {
       {/* Task Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center px-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               {editTask ? 'Edit Task' : 'Create Task'}
             </h2>
@@ -318,6 +328,54 @@ const BoardView = () => {
                   className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estimated Effort</label>
+                <input
+                  type="text"
+                  value={formData.estimatedEffort}
+                  onChange={(e) => setFormData({ ...formData, estimatedEffort: e.target.value })}
+                  placeholder="e.g. M (4-8 hours)"
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* AI Suggest Section */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                    ✨ AI Estimate
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSuggestEstimate}
+                    disabled={aiLoading}
+                    className="text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-3 py-1.5 rounded-lg transition duration-200"
+                  >
+                    {aiLoading ? 'Thinking...' : 'Suggest Estimate'}
+                  </button>
+                </div>
+                {aiSuggestion && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      <span className="font-medium">Effort:</span> {aiSuggestion.effort}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      <span className="font-medium">Due Date:</span> {aiSuggestion.suggestedDueDate}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 italic">
+                      {aiSuggestion.reasoning}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleAcceptSuggestion}
+                      className="mt-2 text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg transition duration-200"
+                    >
+                      ✓ Accept Suggestion
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
