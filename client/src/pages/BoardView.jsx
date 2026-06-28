@@ -33,6 +33,8 @@ const BoardView = () => {
   const [error, setError] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [filterPriority, setFilterPriority] = useState('all');
+  const [sortBy, setSortBy] = useState('none');
 
   useEffect(() => {
     fetchData();
@@ -147,6 +149,27 @@ const BoardView = () => {
     return new Date(dueDate) < new Date();
   };
 
+  const getFilteredTasks = (status) => {
+    let filtered = tasks.filter((t) => t.status === status);
+
+    if (filterPriority !== 'all') {
+      filtered = filtered.filter((t) => t.priority === filterPriority);
+    }
+
+    if (sortBy === 'priority') {
+      const order = { high: 0, medium: 1, low: 2 };
+      filtered = [...filtered].sort((a, b) => order[a.priority] - order[b.priority]);
+    } else if (sortBy === 'dueDate') {
+      filtered = [...filtered].sort((a, b) => {
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate) - new Date(b.dueDate);
+      });
+    }
+
+    return filtered;
+  };
+
   if (loading) return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navbar />
@@ -179,9 +202,47 @@ const BoardView = () => {
           </div>
         )}
 
+        {/* Filter and Sort Bar */}
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 dark:text-gray-400">Filter:</label>
+            <select
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value)}
+              className="text-sm px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Priorities</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 dark:text-gray-400">Sort:</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="text-sm px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="none">Default</option>
+              <option value="priority">By Priority</option>
+              <option value="dueDate">By Due Date</option>
+            </select>
+          </div>
+          {(filterPriority !== 'all' || sortBy !== 'none') && (
+            <button
+              onClick={() => { setFilterPriority('all'); setSortBy('none'); }}
+              className="text-sm text-red-500 hover:text-red-700"
+            >
+              ✕ Clear
+            </button>
+          )}
+        </div>
+
+        {/* Columns */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {COLUMNS.map((col) => {
-            const colTasks = tasks.filter((t) => t.status === col.id);
+            const colTasks = getFilteredTasks(col.id);
             return (
               <div key={col.id} className="bg-gray-100 dark:bg-gray-800 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-4">

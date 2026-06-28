@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { getBoards, createBoard, deleteBoard } from '../api/boards';
+import { getBoards, createBoard, deleteBoard, updateBoard } from '../api/boards';
 
 const Dashboard = () => {
   const [boards, setBoards] = useState([]);
@@ -10,6 +10,8 @@ const Dashboard = () => {
   const [newBoard, setNewBoard] = useState({ title: '', description: '' });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [editingBoard, setEditingBoard] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -39,6 +41,17 @@ const Dashboard = () => {
       setError('Failed to create board');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleRenameBoard = async (id) => {
+    if (!editTitle.trim()) return;
+    try {
+      await updateBoard(id, { title: editTitle });
+      setBoards(boards.map((b) => b._id === id ? { ...b, title: editTitle } : b));
+      setEditingBoard(null);
+    } catch (err) {
+      setError('Failed to rename board');
     }
   };
 
@@ -101,23 +114,57 @@ const Dashboard = () => {
                 key={board._id}
                 className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition duration-200"
               >
-                <div
-                  className="cursor-pointer"
-                  onClick={() => navigate(`/board/${board._id}`)}
-                >
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                    {board.title}
-                  </h3>
-                  {board.description && (
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
-                      {board.description}
+                {/* Title — editable or clickable */}
+                {editingBoard === board._id ? (
+                  <div className="flex gap-2 mb-2" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleRenameBoard(board._id)}
+                      className="flex-1 px-2 py-1 text-sm border border-blue-400 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none"
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => handleRenameBoard(board._id)}
+                      className="text-xs bg-blue-600 text-white px-2 py-1 rounded-lg"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingBoard(null)}
+                      className="text-xs text-gray-500 px-2 py-1"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/board/${board._id}`)}
+                  >
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      {board.title}
+                    </h3>
+                    {board.description && (
+                      <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
+                        {board.description}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      Created {new Date(board.createdAt).toLocaleDateString()}
                     </p>
-                  )}
-                  <p className="text-xs text-gray-400 dark:text-gray-500">
-                    Created {new Date(board.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between">
+                  <button
+                    onClick={() => { setEditingBoard(board._id); setEditTitle(board.title); }}
+                    className="text-sm text-blue-500 hover:text-blue-700 transition duration-200"
+                  >
+                    Rename
+                  </button>
                   <button
                     onClick={() => handleDeleteBoard(board._id)}
                     className="text-sm text-red-500 hover:text-red-700 transition duration-200"
