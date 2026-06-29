@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { getBoard } from '../api/boards';
 import { getTasks, createTask, updateTask, deleteTask, suggestEstimate } from '../api/tasks';
+import ConfirmModal from '../components/ConfirmModal';
 
 const COLUMNS = [
   { id: 'todo', label: 'To Do' },
@@ -35,6 +36,7 @@ const BoardView = () => {
   const [aiSuggestion, setAiSuggestion] = useState(null);
   const [filterPriority, setFilterPriority] = useState('all');
   const [sortBy, setSortBy] = useState('none');
+  const [confirmModal, setConfirmModal] = useState({ show: false, taskId: null });
 
   useEffect(() => {
     fetchData();
@@ -95,15 +97,19 @@ const BoardView = () => {
     }
   };
 
-  const handleDelete = async (taskId) => {
-    if (!window.confirm('Delete this task?')) return;
-    try {
-      await deleteTask(taskId);
-      setTasks(tasks.filter((t) => t._id !== taskId));
-    } catch (err) {
-      setError('Failed to delete task');
-    }
-  };
+  const handleDelete = (taskId) => {
+  setConfirmModal({ show: true, taskId });
+};
+
+const confirmDelete = async () => {
+  try {
+    await deleteTask(confirmModal.taskId);
+    setTasks(tasks.filter((t) => t._id !== confirmModal.taskId));
+    setConfirmModal({ show: false, taskId: null });
+  } catch (err) {
+    setError('Failed to delete task');
+  }
+};
 
   const handleMoveTask = async (task, newStatus) => {
     try {
@@ -457,6 +463,13 @@ const BoardView = () => {
           </div>
         </div>
       )}
+      {confirmModal.show && (
+  <ConfirmModal
+    message="Are you sure you want to delete this task?"
+    onConfirm={confirmDelete}
+    onCancel={() => setConfirmModal({ show: false, taskId: null })}
+  />
+)}
     </div>
   );
 };

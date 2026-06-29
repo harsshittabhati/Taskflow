@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { getBoards, createBoard, deleteBoard, updateBoard } from '../api/boards';
+import ConfirmModal from '../components/ConfirmModal';
 
 const Dashboard = () => {
   const [boards, setBoards] = useState([]);
@@ -13,6 +14,7 @@ const Dashboard = () => {
   const [editingBoard, setEditingBoard] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const navigate = useNavigate();
+  const [confirmModal, setConfirmModal] = useState({ show: false, boardId: null });
 
   useEffect(() => {
     fetchBoards();
@@ -56,14 +58,18 @@ const Dashboard = () => {
   };
 
   const handleDeleteBoard = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this board?')) return;
-    try {
-      await deleteBoard(id);
-      setBoards(boards.filter((b) => b._id !== id));
-    } catch (err) {
-      setError('Failed to delete board');
-    }
-  };
+  setConfirmModal({ show: true, boardId: id });
+};
+
+const confirmDelete = async () => {
+  try {
+    await deleteBoard(confirmModal.boardId);
+    setBoards(boards.filter((b) => b._id !== confirmModal.boardId));
+    setConfirmModal({ show: false, boardId: null });
+  } catch (err) {
+    setError('Failed to delete board');
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -180,7 +186,7 @@ const Dashboard = () => {
 
       {/* Create Board Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center px-4 z-50">
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center px-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Create New Board
@@ -231,6 +237,13 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+      {confirmModal.show && (
+  <ConfirmModal
+    message="Are you sure you want to delete this board?"
+    onConfirm={confirmDelete}
+    onCancel={() => setConfirmModal({ show: false, boardId: null })}
+  />
+)}
     </div>
   );
 };

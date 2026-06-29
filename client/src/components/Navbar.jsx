@@ -1,11 +1,13 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
+import ConfirmModal from './ConfirmModal';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     if (dark) {
@@ -18,9 +20,13 @@ const Navbar = () => {
   }, [dark]);
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  setShowLogoutConfirm(true);
+};
+
+const confirmLogout = () => {
+  logout();
+  navigate('/login');
+};
 
   return (
     <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
@@ -47,13 +53,22 @@ const Navbar = () => {
           </span>
 
           <button
-            onClick={handleLogout}
-            className="text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg transition duration-200"
-          >
-            Logout
-          </button>
+  onClick={handleLogout}
+  className="text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg transition duration-200 cursor-pointer"
+>
+  Logout
+</button>
         </div>
       </div>
+      {showLogoutConfirm && (
+  <ConfirmModal
+    message="Are you sure you want to logout?"
+    subMessage="You can always log back in."
+    confirmLabel="Logout"
+    onConfirm={confirmLogout}
+    onCancel={() => setShowLogoutConfirm(false)}
+  />
+)}
     </nav>
   );
 };
