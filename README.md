@@ -43,13 +43,13 @@ TaskFlow is a full-stack Kanban-style project management application built from 
 ## Screenshots
 
 ### Login Page
-![Login](./screenshots/login.png)
+![Login](./screenshots/Login.png)
 
 ### Dashboard
-![Dashboard](./screenshots/dashboard.png)
+![Dashboard](./screenshots/Dashboard.png)
 
 ### Board View
-![Board View](./screenshots/board-view.png)
+![Board View](./screenshots/BoardView.png)
 
 ### AI Estimate Feature
 ![AI Estimate](./screenshots/task-modal-ai.png)
